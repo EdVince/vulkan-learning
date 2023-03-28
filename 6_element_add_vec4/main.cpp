@@ -1,4 +1,5 @@
 #include <vulkan/vulkan.h>
+#include <glm/glm.hpp>
 
 #include <vector>
 #include <string.h>
@@ -8,9 +9,12 @@
 #include <fstream>
 #include <array>
 
-const int X_SIZE = 4;
-const int Y_SIZE = 4;
-const int Z_SIZE = 4;
+#include<random>
+#include<ctime>
+
+const int X_SIZE = 64;
+const int Y_SIZE = 64;
+const int Z_SIZE = 64;
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -29,6 +33,10 @@ const bool enableValidationLayers = true;
     }																									\
 }
 
+struct Data {
+    glm::vec4 data[X_SIZE * Y_SIZE * Z_SIZE / 4];
+};
+
 class ComputeApplication {
 private:
 
@@ -39,12 +47,15 @@ private:
     VkPhysicalDevice physicalDevice;
     VkDevice device;
 
-    float inData[X_SIZE * Y_SIZE * Z_SIZE] = {0};
-    int dataSize = sizeof(float) * X_SIZE * Y_SIZE * Z_SIZE;
-    VkBuffer inBuffer;
-    VkBuffer outBuffer;
-    VkDeviceMemory inBufferMemory;
-    VkDeviceMemory outBufferMemory;
+    Data input1Data;
+    Data input2Data;
+    int dataSize = sizeof(Data);
+    VkBuffer input1Buffer;
+    VkBuffer input2Buffer;
+    VkBuffer output1Buffer;
+    VkDeviceMemory input1BufferMemory;
+    VkDeviceMemory input2BufferMemory;
+    VkDeviceMemory output1BufferMemory;
 
     VkDescriptorSetLayout myDescriptorSetLayout;
     VkDescriptorPool myDescriptorPool;
@@ -292,8 +303,13 @@ public:
     }
 
     void createBuffer() {
-        for (int i = 0; i < X_SIZE * Y_SIZE * Z_SIZE; i++) {
-            inData[i] = i;
+        {
+            std::default_random_engine e(time(0));
+            std::uniform_real_distribution<double> u(0.0,1.0);
+            for (int i = 0; i < X_SIZE * Y_SIZE * Z_SIZE; i++) {
+                input1Data.data[i/4][i%4] = u(e);
+                input2Data.data[i/4][i%4] = u(e);
+            }
         }
         {
             VkBufferCreateInfo bufferCreateInfo = {};
@@ -301,23 +317,23 @@ public:
             bufferCreateInfo.size = dataSize;
             bufferCreateInfo.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
             bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            VK_CHECK_RESULT(vkCreateBuffer(device, &bufferCreateInfo, nullptr, &inBuffer));
+            VK_CHECK_RESULT(vkCreateBuffer(device, &bufferCreateInfo, nullptr, &input1Buffer));
 
             VkMemoryRequirements memoryRequirements;
-            vkGetBufferMemoryRequirements(device, inBuffer, &memoryRequirements);
+            vkGetBufferMemoryRequirements(device, input1Buffer, &memoryRequirements);
             
             VkMemoryAllocateInfo allocateInfo = {};
             allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
             allocateInfo.allocationSize = memoryRequirements.size;
             allocateInfo.memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-            VK_CHECK_RESULT(vkAllocateMemory(device, &allocateInfo, nullptr, &inBufferMemory));
-            VK_CHECK_RESULT(vkBindBufferMemory(device, inBuffer, inBufferMemory, 0));
+            VK_CHECK_RESULT(vkAllocateMemory(device, &allocateInfo, nullptr, &input1BufferMemory));
+            VK_CHECK_RESULT(vkBindBufferMemory(device, input1Buffer, input1BufferMemory, 0));
 
             void* data;
-            vkMapMemory(device, inBufferMemory, 0, VK_WHOLE_SIZE, 0, &data);
-            memcpy(data, inData, dataSize);
-            vkUnmapMemory(device, inBufferMemory);
+            vkMapMemory(device, input1BufferMemory, 0, VK_WHOLE_SIZE, 0, &data);
+            memcpy(data, &input1Data, dataSize);
+            vkUnmapMemory(device, input1BufferMemory);
         }
         {
             VkBufferCreateInfo bufferCreateInfo = {};
@@ -325,35 +341,65 @@ public:
             bufferCreateInfo.size = dataSize;
             bufferCreateInfo.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
             bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-            VK_CHECK_RESULT(vkCreateBuffer(device, &bufferCreateInfo, nullptr, &outBuffer));
+            VK_CHECK_RESULT(vkCreateBuffer(device, &bufferCreateInfo, nullptr, &input2Buffer));
 
             VkMemoryRequirements memoryRequirements;
-            vkGetBufferMemoryRequirements(device, outBuffer, &memoryRequirements);
+            vkGetBufferMemoryRequirements(device, input2Buffer, &memoryRequirements);
             
             VkMemoryAllocateInfo allocateInfo = {};
             allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
             allocateInfo.allocationSize = memoryRequirements.size;
             allocateInfo.memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-            VK_CHECK_RESULT(vkAllocateMemory(device, &allocateInfo, nullptr, &outBufferMemory));
-            VK_CHECK_RESULT(vkBindBufferMemory(device, outBuffer, outBufferMemory, 0));
+            VK_CHECK_RESULT(vkAllocateMemory(device, &allocateInfo, nullptr, &input2BufferMemory));
+            VK_CHECK_RESULT(vkBindBufferMemory(device, input2Buffer, input2BufferMemory, 0));
+
+            void* data;
+            vkMapMemory(device, input2BufferMemory, 0, VK_WHOLE_SIZE, 0, &data);
+            memcpy(data, &input2Data, dataSize);
+            vkUnmapMemory(device, input2BufferMemory);
+        }
+        {
+            VkBufferCreateInfo bufferCreateInfo = {};
+            bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+            bufferCreateInfo.size = dataSize;
+            bufferCreateInfo.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+            bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            VK_CHECK_RESULT(vkCreateBuffer(device, &bufferCreateInfo, nullptr, &output1Buffer));
+
+            VkMemoryRequirements memoryRequirements;
+            vkGetBufferMemoryRequirements(device, output1Buffer, &memoryRequirements);
+            
+            VkMemoryAllocateInfo allocateInfo = {};
+            allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            allocateInfo.allocationSize = memoryRequirements.size;
+            allocateInfo.memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+            VK_CHECK_RESULT(vkAllocateMemory(device, &allocateInfo, nullptr, &output1BufferMemory));
+            VK_CHECK_RESULT(vkBindBufferMemory(device, output1Buffer, output1BufferMemory, 0));
         }
     }
 
     void createDescriptorSetLayout() {
-        VkDescriptorSetLayoutBinding inputBinding = {};
-        inputBinding.binding = 0;
-        inputBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        inputBinding.descriptorCount = 1;
-        inputBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        VkDescriptorSetLayoutBinding input1Binding = {};
+        input1Binding.binding = 0;
+        input1Binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        input1Binding.descriptorCount = 1;
+        input1Binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-        VkDescriptorSetLayoutBinding outputBinding = {};
-        outputBinding.binding = 1;
-        outputBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        outputBinding.descriptorCount = 1;
-        outputBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        VkDescriptorSetLayoutBinding input2Binding = {};
+        input2Binding.binding = 1;
+        input2Binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        input2Binding.descriptorCount = 1;
+        input2Binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
-        std::vector<VkDescriptorSetLayoutBinding> bindings = { inputBinding, outputBinding };
+        VkDescriptorSetLayoutBinding output1Binding = {};
+        output1Binding.binding = 2;
+        output1Binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        output1Binding.descriptorCount = 1;
+        output1Binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+        std::vector<VkDescriptorSetLayoutBinding> bindings = { input1Binding, input2Binding, output1Binding };
 
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
         descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -364,11 +410,13 @@ public:
     }
 
     void createDescriptorSet() {
-        std::array<VkDescriptorPoolSize, 2> poolSizes = {};
+        std::array<VkDescriptorPoolSize, 3> poolSizes = {};
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         poolSizes[0].descriptorCount = 1;
         poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         poolSizes[1].descriptorCount = 1;
+        poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        poolSizes[2].descriptorCount = 1;
 
         VkDescriptorPoolCreateInfo poolInfo = {};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -384,27 +432,37 @@ public:
         allocInfo.pSetLayouts = &myDescriptorSetLayout;
         VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &myDescriptorSet));
 
-        std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
-        VkDescriptorBufferInfo inputBufferInfo = {};
-        inputBufferInfo.buffer = inBuffer;
-        inputBufferInfo.offset = 0;
-        inputBufferInfo.range = dataSize;
+        std::array<VkWriteDescriptorSet, 3> descriptorWrites = {};
+        VkDescriptorBufferInfo input1BufferInfo = {};
+        input1BufferInfo.buffer = input1Buffer;
+        input1BufferInfo.offset = 0;
+        input1BufferInfo.range = dataSize;
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = myDescriptorSet;
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorWrites[0].descriptorCount = 1;
-        descriptorWrites[0].pBufferInfo = &inputBufferInfo;
-        VkDescriptorBufferInfo outputBufferInfo = {};
-        outputBufferInfo.buffer = outBuffer;
-        outputBufferInfo.offset = 0;
-        outputBufferInfo.range = dataSize;
+        descriptorWrites[0].pBufferInfo = &input1BufferInfo;
+        VkDescriptorBufferInfo input2BufferInfo = {};
+        input2BufferInfo.buffer = input2Buffer;
+        input2BufferInfo.offset = 0;
+        input2BufferInfo.range = dataSize;
         descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[1].dstSet = myDescriptorSet;
         descriptorWrites[1].dstBinding = 1;
         descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         descriptorWrites[1].descriptorCount = 1;
-        descriptorWrites[1].pBufferInfo = &outputBufferInfo;
+        descriptorWrites[1].pBufferInfo = &input2BufferInfo;
+        VkDescriptorBufferInfo output1BufferInfo = {};
+        output1BufferInfo.buffer = output1Buffer;
+        output1BufferInfo.offset = 0;
+        output1BufferInfo.range = dataSize;
+        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[2].dstSet = myDescriptorSet;
+        descriptorWrites[2].dstBinding = 2;
+        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrites[2].descriptorCount = 1;
+        descriptorWrites[2].pBufferInfo = &output1BufferInfo;
 
         vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()),descriptorWrites.data(), 0, nullptr);
     }
@@ -482,19 +540,22 @@ public:
 
     void checkResult() {
         void* mappedMemory = nullptr;
-        vkMapMemory(device, outBufferMemory, 0, VK_WHOLE_SIZE, 0, &mappedMemory);
-        float* outData = (float *)mappedMemory;
+        vkMapMemory(device, output1BufferMemory, 0, VK_WHOLE_SIZE, 0, &mappedMemory);
+        Data* output1Data = (Data *)mappedMemory;
 
+        float diff = 0.0;
         for (int i = 0; i < X_SIZE * Y_SIZE * Z_SIZE; i++) {
-            printf("%f,%f\n",inData[i],outData[i]);
+            float gt = input1Data.data[i/4][i%4] + input2Data.data[i/4][i%4];
+            printf(" %1.4f + %1.4f = %1.4f (%1.4f)\n",input1Data.data[i/4][i%4],input2Data.data[i/4][i%4],output1Data->data[i/4][i%4],gt);
+            diff += std::abs(output1Data->data[i/4][i%4] - gt);
         }
+        printf("diff:%.4f\n",diff);
 
-        vkUnmapMemory(device, outBufferMemory);
+        vkUnmapMemory(device, output1BufferMemory);
     }
 
     void cleanup() {
         if (enableValidationLayers) {
-            // destroy callback.
             auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT");
             if (func == nullptr) {
                 throw std::runtime_error("Could not load vkDestroyDebugReportCallbackEXT");
@@ -502,10 +563,13 @@ public:
             func(instance, debugReportCallback, nullptr);
         }
 
-        vkFreeMemory(device, inBufferMemory, nullptr);
-        vkDestroyBuffer(device, inBuffer, nullptr);
-        vkFreeMemory(device, outBufferMemory, nullptr);
-        vkDestroyBuffer(device, outBuffer, nullptr);
+        vkFreeMemory(device, input1BufferMemory, nullptr);
+        vkFreeMemory(device, input2BufferMemory, nullptr);
+        vkFreeMemory(device, output1BufferMemory, nullptr);
+        vkDestroyBuffer(device, input1Buffer, nullptr);
+        vkDestroyBuffer(device, input2Buffer, nullptr);
+        vkDestroyBuffer(device, output1Buffer, nullptr);
+
         vkDestroyShaderModule(device, myComputeShaderModule, nullptr);
         vkDestroyDescriptorPool(device, myDescriptorPool, nullptr);
         vkDestroyDescriptorSetLayout(device, myDescriptorSetLayout, nullptr);

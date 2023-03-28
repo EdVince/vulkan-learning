@@ -9,3 +9,5 @@ CMakeLists.txt是用chatgpt生成的，非常好用
  * 2_check_instance: 基于上一个，尝试创建一个instance来进一步检查vulkan是否可用
  * 3_vulkan_tutorial: 按照[教程](https://vulkan-tutorial.com/Multisampling)走的简单渲染，代码非常多
  * 4_vulkan_minimal_compute: 基于[vulkan_minimal_compute](https://github.com/Erkaman/vulkan_minimal_compute)，用于配置一个跑vulkan compute的pipeline
+ * 5_element_add: 基于4魔改，实现了output=input+1的功能
+ * 6_element_add_vec4: 基于5魔改，实现了output1=input1+input2的功能，并使用了vec4数据类型和std140布局
