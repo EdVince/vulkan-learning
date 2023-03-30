@@ -1,0 +1,16 @@
+#version 450
+
+layout (constant_id = 0) const float offset = 1;
+
+layout(binding = 0) buffer input1Buffer { float input1Data[]; };
+layout(binding = 1) buffer input2Buffer { float input2Data[]; };
+layout(binding = 2) buffer output1Buffer { float output1Data[]; };
+
+void main() {
+
+    uint index = gl_GlobalInvocationID.x;
+
+    float in1 = input1Data[index];
+    float in2 = input2Data[index];
+    output1Data[index] = in1 + in2 + offset;
+}
