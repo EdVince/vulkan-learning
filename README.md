@@ -11,3 +11,4 @@ CMakeLists.txt是用chatgpt生成的，非常好用
  * 4_vulkan_minimal_compute: 基于[vulkan_minimal_compute](https://github.com/Erkaman/vulkan_minimal_compute)，用于配置一个跑vulkan compute的pipeline
  * 5_element_add: 基于4魔改，实现了output=input+1的功能
  * 6_element_add_vec4: 基于5魔改，实现了output1=input1+input2的功能，并使用了vec4数据类型和std140布局
+ * 7_vkpeak: 跑了一下[vkpeak](https://github.com/nihui/vkpeak)这个项目，没动过代码
