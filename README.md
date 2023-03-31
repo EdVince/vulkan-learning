@@ -13,3 +13,4 @@ CMakeLists.txt是用chatgpt生成的，非常好用
  * 6_element_add_vec4: 基于5魔改，实现了output1=input1+input2的功能，并使用了vec4数据类型和std140布局
  * 7_vkpeak: 跑了一下[vkpeak](https://github.com/nihui/vkpeak)这个项目，没动过代码
  * 8_add_constant: 在6的基础上，增加使用了一个常量，为后面做准备
+ * 9_vkpeak_fp32: 在8的基础上，增加实现了vkpeak中计算fp32-scalar的GFLOPS的功能

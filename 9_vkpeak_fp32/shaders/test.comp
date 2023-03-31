@@ -1,0 +1,41 @@
+#version 450
+
+#define buffer_ld1(buf,i) buf[i]
+#define buffer_st1(buf,i,v) {buf[i]=v;}
+
+layout (local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+layout (constant_id = 0) const int loop = 1;
+layout (binding = 0) buffer a_blob { float a_blob_data[]; };
+layout (binding = 1) buffer b_blob { float b_blob_data[]; };
+layout (binding = 2) writeonly buffer c_blob { float c_blob_data[]; };
+
+void main() {
+
+    const int gx = int(gl_GlobalInvocationID.x);
+    float a = buffer_ld1(a_blob_data, gx);
+    float b = buffer_ld1(b_blob_data, gx);
+    float c = float(1.f);
+    for (int i = 0; i < loop; i++)
+    {
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+        c = a * c + b;
+    }
+    buffer_st1(a_blob_data, gx, a);
+    buffer_st1(b_blob_data, gx, b);
+    buffer_st1(c_blob_data, gx, c);
+}
