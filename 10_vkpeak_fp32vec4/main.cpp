@@ -63,8 +63,8 @@ private:
     VkPhysicalDevice physicalDevice;
     VkDevice device;
 
-    float* aData;
-    float* bData;
+    glm::vec4* aData;
+    glm::vec4* bData;
     int dataSize;
     VkBuffer aBuffer;
     VkBuffer bBuffer;
@@ -101,9 +101,9 @@ public:
 
             for (int i = 0; i < cmd_loop; i++) {
 
-                aData = new float[count];
-                bData = new float[count];
-                dataSize = sizeof(float) * count;
+                aData = new glm::vec4[count];
+                bData = new glm::vec4[count];
+                dataSize = sizeof(glm::vec4) * count;
 
                 createInstance();
                 findPhysicalDevice();
@@ -119,7 +119,7 @@ public:
                 auto end = std::chrono::high_resolution_clock::now();
                 auto time_span = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
                 double time = time_span.count() / 1000.0;
-                double mac = (double)count * (double)loop * 16 * 1 * 2;
+                double mac = (double)count * (double)loop * 16 * 4 * 2;
                 double gflops = mac / time / 1000000;
                 max_gflops = std::max(max_gflops,gflops);
                 
