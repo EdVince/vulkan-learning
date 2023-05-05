@@ -137,7 +137,7 @@ public:
             }
         }
 
-        printf("fp32-scalar = %.2f GFLOPS\n", max_gflops);
+        printf("fp32-vec4 = %.2f GFLOPS\n", max_gflops);
     }
 
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallbackFn(
@@ -221,15 +221,15 @@ public:
             vkEnumerateInstanceLayerProperties(&layerCount, layerProperties.data());
             bool foundLayer = false;
             for (VkLayerProperties prop : layerProperties) {
-                if (strcmp("VK_LAYER_LUNARG_standard_validation", prop.layerName) == 0) {
+                if (strcmp("VK_LAYER_KHRONOS_validation", prop.layerName) == 0) {
                     foundLayer = true;
                     break;
                 }
             }
             if (!foundLayer) {
-                throw std::runtime_error("Layer VK_LAYER_LUNARG_standard_validation not supported\n");
+                throw std::runtime_error("Layer VK_LAYER_KHRONOS_validation not supported\n");
             }
-            enabledLayers.push_back("VK_LAYER_LUNARG_standard_validation");
+            enabledLayers.push_back("VK_LAYER_KHRONOS_validation");
 
             uint32_t extensionCount;
             vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
